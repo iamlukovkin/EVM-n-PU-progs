@@ -1,7 +1,7 @@
 /*
- * EVM'n'PU-progs.c
+ * Lab4.c
  *
- * Created: 29.10.2023 14:32:20
+ * Created: 29.10.2023 14:34:22
  * Author : Ivan
  */ 
 
