@@ -1,18 +1,10 @@
-/*
- * Lab4.c
- *
- * Created: 29.10.2023 14:34:22
- * Author : Ivan
- */ 
-
 #include <avr/io.h>
-
+#include <tasks/tasks.h>
 
 int main(void)
 {
-    /* Replace with your application code */
-    while (1) 
-    {
-    }
-}
+	DDRB = 1 << PB5;
+	func();
 
+	return 0;
+}

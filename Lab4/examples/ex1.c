@@ -1,6 +1,7 @@
-#include <avr/io.h> ; Подключение необходимых библиотек
+#define __AVR_ATmega328P__
+#include <avr/io.h>
 
-int main(void) {
+int ex_1(void) {
     int x; // Объявление переменной x
     DDRD = 0xFF; // Настройка порта D на вывод информации
 

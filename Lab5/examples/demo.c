@@ -7,7 +7,7 @@ ISR(PCINT2_vect) { // Объявление подпрограммы обрабо
 }
 
 int main(void) { // начало основной программы
-    PCMSK |= 0xAA; // Разрешение PCINT прерываний от выводов PD1, PD3, PD5, PD7
+    PCMSK2 |= 0xAA; // Разрешение PCINT прерываний от выводов PD1, PD3, PD5, PD7
     PCICR |= (1 << PCIE2); // Разрешение прерываний PCINT2
 
     // some actions
