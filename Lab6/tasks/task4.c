@@ -26,9 +26,9 @@ ISR(USART_RX_vect) {
 	if (receivedByte == '!') {
 		data_index = 0; // Сброс индекса для приема нового пакета
 		data_ready = false; // Сброс флага
-		} else if (receivedByte == '\n') { // Используем '\n' для завершения пакета
+	} else if (receivedByte == '\n') { // Используем '\n' для завершения пакета
 		data_ready = true; // Пакет завершен
-		} else {
+	} else {
 		received_data[data_index] = receivedByte;
 		data_index++;
 		if (data_index >= 4) {

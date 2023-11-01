@@ -28,28 +28,22 @@ void LED_Off() {
 
 ISR(USART_RX_vect) {
     char receivedByte = UDR0; // Получить принятый байт
-
+    const char message[] = "FF0101010001020480\n";
     // Определите условие, при котором нужно включить или выключить светодиод L
     if (receivedByte == 'e') {
+        USART_Transmit(message);
         LED_On(); // Включить светодиод L
-		_delay_ms(333);
     } else {
         LED_Off(); // Выключить светодиод L
     }
 }
 
 int main() {
-    // Настройка порта B5 (светодиода) как вывода
     DDRB |= (1 << DDB5);
-
-    // Инициализация USART
     USART_Init();
-    
-    // Разрешение глобальных прерываний
     sei();
 
     while (1) {
-        // Основной код, можно оставить пустым
     }
 
     return 0;

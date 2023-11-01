@@ -32,7 +32,7 @@ int main() {
     USART_Init();
     sei(); // Глобальное разрешение прерываний
     
-    const char message[] = "Atmega328P:ReadyToWork\n";
+    const char message[] = "FF0101010001020480\n";
     uint8_t index = 0;
 
     while (1) {

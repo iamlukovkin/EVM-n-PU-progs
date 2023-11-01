@@ -1,72 +1,101 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <stdlib.h> // Добавлен заголовок для функции strtol
 #include <stdbool.h>
-
+#include <util/delay.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void USART_Init() {
-	UBRR0 = 103; // Настройка скорости передачи (9600 бит/с при F_CPU=16000000)
-	
-	UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); // Включение приема, передачи и прерывания по приему
-	UCSR0C = (1 << UCSZ01) | (1 << UCSZ00); // Формат кадра: 8 бит данных, 1 стоп-бит
+    UBRR0 = 103; // Set the baud rate to 9600 (for F_CPU=16000000)
+
+    UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0); // Enable reception, transmission, and receive interrupt
+    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00); // 8-bit data, 1 stop bit
 }
 
-volatile char received_data[5]; // Буфер для принимаемых данных
-volatile uint8_t data_index = 0;
+volatile char received_data[255]; // Buffer for received data
+volatile int data_index = 0;
 volatile bool data_ready = false;
+char my_adr[] = {'0', '1'};
+long data_length;
+volatile int data_counter = 0;
 
 void USART_Transmit(char data) {
-	while (!(UCSR0A & (1 << UDRE0))); // Ждем, пока UDR0 готов для передачи
-	UDR0 = data;
+    while (!(UCSR0A & (1 << UDRE0))); // Wait until UDR0 is ready for transmission
+    UDR0 = data;
+}
+
+void LED_On() {
+    PORTB |= (1 << PB5); // Turn on the LED (PortB5)
+}
+
+void LED_Off() {
+    PORTB &= ~(1 << PB5); // Turn off the LED (PortB5)
 }
 
 ISR(USART_RX_vect) {
-	char receivedByte = UDR0; // Получить принятый байт
-	
-	if (receivedByte == '!') {
-		data_index = 0; // Сброс индекса для приема нового пакета
-		data_ready = false; // Сброс флага
-		} else if (receivedByte == '\n') { // Используем '\n' для завершения пакета
-		data_ready = true; // Пакет завершен
+    char receivedByte = UDR0; // Get the received byte
+
+    if (data_index == 0) {
+		if (receivedByte != 'F') {
+			return;
+		}
+    } else if (data_index == 1) {
+		if (receivedByte != 'F') {
+			return;
+		}
+    } else if (data_index == 2) {
+		 if (receivedByte != my_adr[0]) {
+			return;
+		 } 
+    } else if (data_index == 3) {
+		if (receivedByte != my_adr[1]) {
+			return;
+		}
+	} else if (data_index == 6) {
+
+		data_length = strtol(&receivedByte, NULL, 16) << 4; // РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РїРµСЂРІРѕРіРѕ РїРѕР»СѓР±Р°Р№С‚Р° Рё СЃРґРІРёРі РЅР° 4 Р±РёС‚Р° РІР»РµРІРѕ
+	} else if (data_index == 7) {
+		data_length |= strtol(&receivedByte, NULL, 16) ;  
+		data_length *= 2;
+    } else if (data_index >= 8 && data_counter < data_length) {
+        received_data[data_counter] = receivedByte;
+        data_counter++;
+		data_index = 9;	
+    } else if ( data_index == 10) {
+		if (receivedByte != '8') {
+			return;
+		}
+	} else if (data_index == 11) {
+		if (receivedByte != '0') {
+			return;
 		} else {
-		received_data[data_index] = receivedByte;
-		data_index++;
-		if (data_index >= 4) {
-			data_ready = true; // Приняты 4 числа
+			data_ready = true;
 		}
 	}
+	data_index++;
 }
 
 int main() {
-	// Настройка порта B5 (светодиода) как вывода
-	DDRB |= (1 << DDB5);
+    // Set up port B5 (LED) as an output
+    DDRB |= (1 << DDB5);
 
-	// Инициализация USART
-	USART_Init();
+    // Initialize USART
+    USART_Init();
 
-	// Разрешение глобальных прерываний
-	sei();
+    // Enable global interrupts
+    sei();
 
-	while (1) {
-		if (data_ready) {
-			// Приняты 4 числа в формате a,b,c,d, обработаем их
-			data_ready = false; // Сброс флага
-			char* ptr;
-			long a = strtol(received_data, &ptr, 10);
-			long b = strtol(ptr + 1, &ptr, 10);
-			long c = strtol(ptr + 1, &ptr, 10);
-			long d = strtol(ptr + 1, NULL, 10);
-
-			// Отправим числа в порядке b,a,d,c
-			char send_buffer[20];
-			sprintf(send_buffer, "!%ld,%ld,%ld,%ld\n", b, a, d, c);
-
-			// Отправка данных
-			for (int i = 0; send_buffer[i] != '\0'; i++) {
-				USART_Transmit(send_buffer[i]);
+    while (1) {
+        if (data_ready) {
+			data_index = 0;
+			for (int i = 0; i < data_length; i++) {
+				USART_Transmit(received_data[i]);
 			}
-		}
-	}
+			USART_Transmit('\n');
 
-	return 0;
+            data_ready = false; // Reset the flag
+        }
+    }
+
+    return 0;
 }
