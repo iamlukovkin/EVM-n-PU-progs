@@ -2,6 +2,8 @@
 #include <avr/interrupt.h>
 #include <stdbool.h>
 #include <util/delay.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void USART_Init() {
     UBRR0 = 103; // Set the baud rate to 9600 (for F_CPU=16000000)
@@ -14,9 +16,8 @@ volatile char received_data[255]; // Buffer for received data
 volatile int data_index = 0;
 volatile bool data_ready = false;
 char my_adr[] = {'0', '1'};
-volatile bool data_getting = false;
-volatile int data_length = 0x00;
-volatile int counter = 0;
+long data_length;
+volatile int data_counter = 0;
 
 void USART_Transmit(char data) {
     while (!(UCSR0A & (1 << UDRE0))); // Wait until UDR0 is ready for transmission
@@ -24,38 +25,54 @@ void USART_Transmit(char data) {
 }
 
 void LED_On() {
-    PORTB |= (1 << PB5); // Включить светодиод L (PortB5)
+    PORTB |= (1 << PB5); // Turn on the LED (PortB5)
 }
+
 void LED_Off() {
-    PORTB &= ~(1 << PB5); // Выключить светодиод L (PortB5)
+    PORTB &= ~(1 << PB5); // Turn off the LED (PortB5)
 }
 
 ISR(USART_RX_vect) {
     char receivedByte = UDR0; // Get the received byte
-	if (data_index == 0 && receivedByte != 'F') {
-		return;
-	} else if (data_index == 1 && receivedByte != 'F') {
-		return;
-	} else if (data_index == 2 && receivedByte != my_adr[0]) {
-		return;
-	} else if (data_index == 3 && receivedByte != my_adr[1]) {
-		return;
+
+    if (data_index == 0) {
+		if (receivedByte != 'F') {
+			return;
+		}
+    } else if (data_index == 1) {
+		if (receivedByte != 'F') {
+			return;
+		}
+    } else if (data_index == 2) {
+		 if (receivedByte != my_adr[0]) {
+			return;
+		 } 
+    } else if (data_index == 3) {
+		if (receivedByte != my_adr[1]) {
+			return;
+		}
 	} else if (data_index == 6) {
-		data_length += receivedByte * 0x10;
+
+		data_length = strtol(&receivedByte, NULL, 16) << 4; // Преобразование первого полубайта и сдвиг на 4 бита влево
 	} else if (data_index == 7) {
-		data_length += receivedByte;
-		char received_data[data_length];
-		data_length --;
-	} else if (data_index >= 8) {
-		if (data_length >= 0) {
-			received_data[data_length] = receivedByte;
-			data_length --;
+		data_length |= strtol(&receivedByte, NULL, 16) ;  
+		data_length *= 2;
+    } else if (data_index >= 8 && data_counter < data_length) {
+        received_data[data_counter] = receivedByte;
+        data_counter++;
+		data_index = 9;	
+    } else if ( data_index == 10) {
+		if (receivedByte != '8') {
+			return;
+		}
+	} else if (data_index == 11) {
+		if (receivedByte != '0') {
+			return;
 		} else {
 			data_ready = true;
 		}
 	}
-
-	data_index ++;
+	data_index++;
 }
 
 int main() {
@@ -68,13 +85,14 @@ int main() {
     // Enable global interrupts
     sei();
 
-    
     while (1) {
         if (data_ready) {
-            // Data is ready, send it
-            for (int i = 0; i <= data_length; i++) {
-                USART_Transmit(received_data[i]);
-            }
+			data_index = 0;
+			for (int i = 0; i < data_length; i++) {
+				USART_Transmit(received_data[i]);
+			}
+			USART_Transmit('\n');
+
             data_ready = false; // Reset the flag
         }
     }
